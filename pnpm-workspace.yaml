@@ -3,6 +3,8 @@ packages:
   - "packages/*"
 allowBuilds:
   '@prisma/engines': false
+  '@scarf/scarf': false
+  bcrypt: false
   prisma: false
   sharp: false
   unrs-resolver: false
