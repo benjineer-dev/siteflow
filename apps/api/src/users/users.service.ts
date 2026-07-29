@@ -1,20 +1,36 @@
-import { ConflictException, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { Injectable } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 
-const PASSWORD_SALT_ROUNDS = 12;
+const publicUserSelect = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.UserSelect;
+
+interface CreateUserData {
+  email: string;
+  name: string;
+  passwordHash: string;
+}
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateUserDto): Promise<UserResponseDto> {
-    const email = dto.email.trim().toLowerCase();
-    const name = dto.name.trim();
+  create(data: CreateUserData): Promise<UserResponseDto> {
+    return this.prisma.user.create({
+      data,
+      select: publicUserSelect,
+    });
+  }
 
-    const existingUser = await this.prisma.user.findUnique({
+  findByEmail(email: string) {
+    return this.prisma.user.findUnique({
       where: {
         email,
       },
@@ -22,43 +38,32 @@ export class UsersService {
         id: true,
       },
     });
+  }
 
-    if (existingUser) {
-      throw new ConflictException('A user with this email already exists');
-    }
-
-    const passwordHash = await bcrypt.hash(
-      dto.password,
-      PASSWORD_SALT_ROUNDS,
-    );
-
-    return this.prisma.user.create({
-      data: {
+  findByEmailWithPassword(email: string) {
+    return this.prisma.user.findUnique({
+      where: {
         email,
-        name,
-        passwordHash,
       },
       select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
+        ...publicUserSelect,
+        passwordHash: true,
       },
     });
   }
 
-  async findAll(): Promise<UserResponseDto[]> {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
+  findById(id: string): Promise<UserResponseDto | null> {
+    return this.prisma.user.findUnique({
+      where: {
+        id,
       },
+      select: publicUserSelect,
+    });
+  }
+
+  findAll(): Promise<UserResponseDto[]> {
+    return this.prisma.user.findMany({
+      select: publicUserSelect,
       orderBy: {
         createdAt: 'desc',
       },

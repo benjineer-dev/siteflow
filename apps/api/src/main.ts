@@ -22,12 +22,20 @@ async function bootstrap() {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('SiteFlow API')
-    .setDescription(
-      'API for construction issue tracking and workflow management.',
-    )
-    .setVersion('0.1.0')
-    .build();
+  .setTitle('SiteFlow API')
+  .setDescription(
+    'API for construction issue tracking and workflow management.',
+  )
+  .setVersion('0.1.0')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    },
+    'access-token',
+  )
+  .build();
 
   const swaggerDocument = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
