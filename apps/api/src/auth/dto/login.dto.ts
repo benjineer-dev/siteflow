@@ -7,7 +7,7 @@ export class LoginDto {
   })
   @IsEmail()
   @MaxLength(255)
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: 'SiteFlow123',
@@ -15,5 +15,5 @@ export class LoginDto {
   @IsString()
   @MinLength(1)
   @MaxLength(72)
-  password: string;
+  password!: string;
 }

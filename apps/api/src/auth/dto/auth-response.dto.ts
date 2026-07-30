@@ -5,10 +5,10 @@ export class AuthResponseDto {
   @ApiProperty({
     description: 'JWT access token',
   })
-  accessToken: string;
+  accessToken!: string;
 
   @ApiProperty({
     type: UserResponseDto,
   })
-  user: UserResponseDto;
+  user!: UserResponseDto;
 }

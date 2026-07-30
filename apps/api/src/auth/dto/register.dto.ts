@@ -7,7 +7,7 @@ export class RegisterDto {
   })
   @IsEmail()
   @MaxLength(255)
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: 'Benjamin',
@@ -17,7 +17,7 @@ export class RegisterDto {
   @IsString()
   @MinLength(2)
   @MaxLength(100)
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: 'SiteFlow123',
@@ -27,5 +27,5 @@ export class RegisterDto {
   @IsString()
   @MinLength(8)
   @MaxLength(72)
-  password: string;
+  password!: string;
 }

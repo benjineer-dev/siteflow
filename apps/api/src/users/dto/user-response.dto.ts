@@ -3,27 +3,27 @@ import { UserRole } from '../../generated/prisma/client';
 
 export class UserResponseDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: 'benjamin@example.com',
   })
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: 'Benjamin',
   })
-  name: string;
+  name!: string;
 
   @ApiProperty({
     enum: UserRole,
     example: UserRole.ENGINEER,
   })
-  role: UserRole;
+  role!: UserRole;
 
   @ApiProperty()
-  createdAt: Date;
+  createdAt!: Date;
 
   @ApiProperty()
-  updatedAt: Date;
+  updatedAt!: Date;
 }
