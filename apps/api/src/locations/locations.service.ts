@@ -336,4 +336,28 @@ export class LocationsService {
 
     throw error;
   }
+  async assertOwnedFloor(
+  ownerId: string,
+  projectId: string,
+  floorId: string,
+): Promise<void> {
+  const floor = await this.prisma.floor.findFirst({
+    where: {
+      id: floorId,
+      building: {
+        projectId,
+        project: {
+          ownerId,
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!floor) {
+    throw new NotFoundException('Floor not found');
+  }
+}
 }
