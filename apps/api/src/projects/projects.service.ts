@@ -114,7 +114,7 @@ export class ProjectsService {
     projectId: string,
     dto: UpdateProjectDto,
   ): Promise<ProjectResponseDto> {
-    await this.ensureOwnedProject(ownerId, projectId);
+    await this.assertOwnedProject(ownerId, projectId);
 
     return this.prisma.project.update({
       where: {
@@ -152,24 +152,24 @@ export class ProjectsService {
     }
   }
 
-  private async ensureOwnedProject(
-    ownerId: string,
-    projectId: string,
-  ): Promise<void> {
-    const project = await this.prisma.project.findFirst({
-      where: {
-        id: projectId,
-        ownerId,
-      },
-      select: {
-        id: true,
-      },
-    });
+  async assertOwnedProject(
+  ownerId: string,
+  projectId: string,
+): Promise<void> {
+  const project = await this.prisma.project.findFirst({
+    where: {
+      id: projectId,
+      ownerId,
+    },
+    select: {
+      id: true,
+    },
+  });
 
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
+  if (!project) {
+    throw new NotFoundException('Project not found');
   }
+}
 
   private normalizeDescription(
     description?: string,
