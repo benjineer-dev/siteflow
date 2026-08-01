@@ -13,7 +13,25 @@ enum UserRole {
   ENGINEER
   CONTRACTOR
 }
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
 
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectRole {
+  OWNER
+  ENGINEER
+  CONTRACTOR
+}
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -22,7 +40,7 @@ model User {
   role         UserRole @default(ENGINEER)
 
   projects Project[]
-
+  projectMemberships ProjectMember[]
   issueComments IssueComment[]
   authoredIssues Issue[] @relation("IssueAuthor")
   assignedIssues Issue[] @relation("IssueAssignee")
@@ -38,12 +56,29 @@ model Project {
 
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id])
-
+  members ProjectMember[]
   buildings Building[] 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+}
+
+model ProjectMember {
+  id   String      @id @default(uuid())
+  role ProjectRole
+
+  projectId String
+  project   Project @relation(fields: [projectId],references: [id],onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId],references: [id],onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, userId])
+  @@index([userId])
 }
 
 model Building {
@@ -79,19 +114,6 @@ model Floor {
   @@index([buildingId])
 }
 
-enum IssueStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-}
-
-enum IssuePriority {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
 
 model Issue {
   id          String        @id @default(uuid())

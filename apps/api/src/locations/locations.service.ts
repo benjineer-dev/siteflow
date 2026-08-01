@@ -38,12 +38,12 @@ export class LocationsService {
   ) {}
 
   async createBuilding(
-    ownerId: string,
+    userId: string,
     projectId: string,
     dto: CreateBuildingDto,
   ): Promise<BuildingResponseDto> {
-    await this.projectsService.assertOwnedProject(
-      ownerId,
+    await this.projectsService.assertProjectOwner(
+      userId,
       projectId,
     );
 
@@ -64,11 +64,11 @@ export class LocationsService {
   }
 
   async findBuildings(
-    ownerId: string,
+    userId: string,
     projectId: string,
   ): Promise<BuildingResponseDto[]> {
-    await this.projectsService.assertOwnedProject(
-      ownerId,
+    await this.projectsService.assertProjectAccess(
+      userId,
       projectId,
     );
 
@@ -84,28 +84,30 @@ export class LocationsService {
   }
 
   async findBuilding(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
   ): Promise<BuildingResponseDto> {
-    return this.getOwnedBuilding(
-      ownerId,
+    await this.projectsService.assertProjectAccess(
+      userId,
       projectId,
-      buildingId,
     );
+
+    return this.getBuilding(projectId, buildingId);
   }
 
   async updateBuilding(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
     dto: UpdateBuildingDto,
   ): Promise<BuildingResponseDto> {
-    await this.getOwnedBuilding(
-      ownerId,
+    await this.projectsService.assertProjectOwner(
+      userId,
       projectId,
-      buildingId,
     );
+
+    await this.getBuilding(projectId, buildingId);
 
     try {
       return await this.prisma.building.update({
@@ -130,15 +132,16 @@ export class LocationsService {
   }
 
   async removeBuilding(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
   ): Promise<void> {
-    await this.getOwnedBuilding(
-      ownerId,
+    await this.projectsService.assertProjectOwner(
+      userId,
       projectId,
-      buildingId,
     );
+
+    await this.getBuilding(projectId, buildingId);
 
     await this.prisma.building.delete({
       where: {
@@ -148,16 +151,17 @@ export class LocationsService {
   }
 
   async createFloor(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
     dto: CreateFloorDto,
   ): Promise<FloorResponseDto> {
-    await this.getOwnedBuilding(
-      ownerId,
+    await this.projectsService.assertProjectOwner(
+      userId,
       projectId,
-      buildingId,
     );
+
+    await this.getBuilding(projectId, buildingId);
 
     try {
       return await this.prisma.floor.create({
@@ -177,15 +181,16 @@ export class LocationsService {
   }
 
   async findFloors(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
   ): Promise<FloorResponseDto[]> {
-    await this.getOwnedBuilding(
-      ownerId,
+    await this.projectsService.assertProjectAccess(
+      userId,
       projectId,
-      buildingId,
     );
+
+    await this.getBuilding(projectId, buildingId);
 
     return this.prisma.floor.findMany({
       where: {
@@ -199,14 +204,18 @@ export class LocationsService {
   }
 
   async updateFloor(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
     floorId: string,
     dto: UpdateFloorDto,
   ): Promise<FloorResponseDto> {
-    await this.getOwnedFloor(
-      ownerId,
+    await this.projectsService.assertProjectOwner(
+      userId,
+      projectId,
+    );
+
+    await this.getFloor(
       projectId,
       buildingId,
       floorId,
@@ -240,13 +249,17 @@ export class LocationsService {
   }
 
   async removeFloor(
-    ownerId: string,
+    userId: string,
     projectId: string,
     buildingId: string,
     floorId: string,
   ): Promise<void> {
-    await this.getOwnedFloor(
-      ownerId,
+    await this.projectsService.assertProjectOwner(
+      userId,
+      projectId,
+    );
+
+    await this.getFloor(
       projectId,
       buildingId,
       floorId,
@@ -259,8 +272,34 @@ export class LocationsService {
     });
   }
 
-  private async getOwnedBuilding(
-    ownerId: string,
+  async assertAccessibleFloor(
+    userId: string,
+    projectId: string,
+    floorId: string,
+  ): Promise<void> {
+    await this.projectsService.assertProjectAccess(
+      userId,
+      projectId,
+    );
+
+    const floor = await this.prisma.floor.findFirst({
+      where: {
+        id: floorId,
+        building: {
+          projectId,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!floor) {
+      throw new NotFoundException('Floor not found');
+    }
+  }
+
+  private async getBuilding(
     projectId: string,
     buildingId: string,
   ): Promise<BuildingResponseDto> {
@@ -268,9 +307,6 @@ export class LocationsService {
       where: {
         id: buildingId,
         projectId,
-        project: {
-          ownerId,
-        },
       },
       select: buildingSelect,
     });
@@ -282,8 +318,7 @@ export class LocationsService {
     return building;
   }
 
-  private async getOwnedFloor(
-    ownerId: string,
+  private async getFloor(
     projectId: string,
     buildingId: string,
     floorId: string,
@@ -294,9 +329,6 @@ export class LocationsService {
         buildingId,
         building: {
           projectId,
-          project: {
-            ownerId,
-          },
         },
       },
       select: floorSelect,
@@ -328,7 +360,8 @@ export class LocationsService {
     message: string,
   ): never {
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2002'
     ) {
       throw new ConflictException(message);
@@ -336,28 +369,4 @@ export class LocationsService {
 
     throw error;
   }
-  async assertOwnedFloor(
-  ownerId: string,
-  projectId: string,
-  floorId: string,
-): Promise<void> {
-  const floor = await this.prisma.floor.findFirst({
-    where: {
-      id: floorId,
-      building: {
-        projectId,
-        project: {
-          ownerId,
-        },
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!floor) {
-    throw new NotFoundException('Floor not found');
-  }
-}
 }

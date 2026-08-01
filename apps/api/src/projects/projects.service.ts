@@ -1,5 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  ProjectRole,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectListResponseDto } from './dto/project-list-response.dto';
@@ -35,16 +42,30 @@ export class ProjectsService {
   }
 
   async findAll(
-    ownerId: string,
+    userId: string,
     query: ProjectQueryDto,
   ): Promise<ProjectListResponseDto> {
     const page = query.page;
     const limit = query.limit;
     const search = query.search?.trim();
 
-    const where: Prisma.ProjectWhereInput = {
-      ownerId,
-      ...(search
+    const accessWhere: Prisma.ProjectWhereInput = {
+      OR: [
+        {
+          ownerId: userId,
+        },
+        {
+          members: {
+            some: {
+              userId,
+            },
+          },
+        },
+      ],
+    };
+
+    const searchWhere: Prisma.ProjectWhereInput | undefined =
+      search
         ? {
             OR: [
               {
@@ -61,7 +82,13 @@ export class ProjectsService {
               },
             ],
           }
-        : {}),
+        : undefined;
+
+    const where: Prisma.ProjectWhereInput = {
+      AND: [
+        accessWhere,
+        ...(searchWhere ? [searchWhere] : []),
+      ],
     };
 
     const [total, items] = await this.prisma.$transaction([
@@ -91,13 +118,14 @@ export class ProjectsService {
   }
 
   async findOne(
-    ownerId: string,
+    userId: string,
     projectId: string,
   ): Promise<ProjectResponseDto> {
-    const project = await this.prisma.project.findFirst({
+    await this.assertProjectAccess(userId, projectId);
+
+    const project = await this.prisma.project.findUnique({
       where: {
         id: projectId,
-        ownerId,
       },
       select: projectSelect,
     });
@@ -110,11 +138,11 @@ export class ProjectsService {
   }
 
   async update(
-    ownerId: string,
+    userId: string,
     projectId: string,
     dto: UpdateProjectDto,
   ): Promise<ProjectResponseDto> {
-    await this.assertOwnedProject(ownerId, projectId);
+    await this.assertProjectOwner(userId, projectId);
 
     return this.prisma.project.update({
       where: {
@@ -128,7 +156,9 @@ export class ProjectsService {
           : {}),
         ...(dto.description !== undefined
           ? {
-              description: this.normalizeDescription(dto.description),
+              description: this.normalizeDescription(
+                dto.description,
+              ),
             }
           : {}),
       },
@@ -137,39 +167,109 @@ export class ProjectsService {
   }
 
   async remove(
-    ownerId: string,
+    userId: string,
     projectId: string,
   ): Promise<void> {
-    const result = await this.prisma.project.deleteMany({
+    await this.assertProjectOwner(userId, projectId);
+
+    await this.prisma.project.delete({
       where: {
         id: projectId,
-        ownerId,
+      },
+    });
+  }
+
+  async getAccessRole(
+    userId: string,
+    projectId: string,
+  ): Promise<ProjectRole> {
+    const project = await this.prisma.project.findFirst({
+      where: {
+        id: projectId,
+        OR: [
+          {
+            ownerId: userId,
+          },
+          {
+            members: {
+              some: {
+                userId,
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        ownerId: true,
+        members: {
+          where: {
+            userId,
+          },
+          select: {
+            role: true,
+          },
+        },
       },
     });
 
-    if (result.count === 0) {
+    if (!project) {
       throw new NotFoundException('Project not found');
+    }
+
+    if (project.ownerId === userId) {
+      return ProjectRole.OWNER;
+    }
+
+    const membership = project.members[0];
+
+    if (!membership) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return membership.role;
+  }
+
+  async assertProjectAccess(
+    userId: string,
+    projectId: string,
+  ): Promise<ProjectRole> {
+    return this.getAccessRole(userId, projectId);
+  }
+
+  async assertProjectOwner(
+    userId: string,
+    projectId: string,
+  ): Promise<void> {
+    const role = await this.getAccessRole(
+      userId,
+      projectId,
+    );
+
+    if (role !== ProjectRole.OWNER) {
+      throw new ForbiddenException(
+        'Only the project owner can perform this action',
+      );
     }
   }
 
-  async assertOwnedProject(
-  ownerId: string,
-  projectId: string,
-): Promise<void> {
-  const project = await this.prisma.project.findFirst({
-    where: {
-      id: projectId,
-      ownerId,
-    },
-    select: {
-      id: true,
-    },
-  });
+  async assertCanManageIssues(
+    userId: string,
+    projectId: string,
+  ): Promise<void> {
+    const role = await this.getAccessRole(
+      userId,
+      projectId,
+    );
 
-  if (!project) {
-    throw new NotFoundException('Project not found');
+    if (
+      role !== ProjectRole.OWNER &&
+      role !== ProjectRole.ENGINEER
+    ) {
+      throw new ForbiddenException(
+        'You cannot manage issues in this project',
+      );
+    }
   }
-}
 
   private normalizeDescription(
     description?: string,

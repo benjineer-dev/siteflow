@@ -9,6 +9,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { LocationsModule } from './locations/locations.module';
 import { IssuesModule } from './issues/issues.module';
 import { CommentsModule } from './comments/comments.module';
+import { MembersModule } from './members/members.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CommentsModule } from './comments/comments.module';
     LocationsModule,
     IssuesModule,
     CommentsModule,
+    MembersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

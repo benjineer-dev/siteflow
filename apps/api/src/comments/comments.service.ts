@@ -37,7 +37,7 @@ export class CommentsService {
     issueId: string,
     dto: CreateCommentDto,
   ): Promise<CommentResponseDto> {
-    await this.issuesService.assertOwnedIssue(
+    await this.issuesService.assertAccessibleIssue(
       userId,
       projectId,
       issueId,
@@ -58,7 +58,7 @@ export class CommentsService {
     projectId: string,
     issueId: string,
   ): Promise<CommentResponseDto[]> {
-    await this.issuesService.assertOwnedIssue(
+    await this.issuesService.assertAccessibleIssue(
       userId,
       projectId,
       issueId,
@@ -81,7 +81,7 @@ export class CommentsService {
     issueId: string,
     commentId: string,
   ): Promise<void> {
-    await this.issuesService.assertOwnedIssue(
+    await this.issuesService.assertAccessibleIssue(
       userId,
       projectId,
       issueId,

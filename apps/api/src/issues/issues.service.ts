@@ -38,17 +38,17 @@ export class IssuesService {
   ) {}
 
   async create(
-    ownerId: string,
+    userId: string,
     projectId: string,
     dto: CreateIssueDto,
   ): Promise<IssueResponseDto> {
-    await this.projectsService.assertOwnedProject(
-      ownerId,
+    await this.projectsService.assertCanManageIssues(
+      userId,
       projectId,
     );
 
-    await this.locationsService.assertOwnedFloor(
-      ownerId,
+    await this.locationsService.assertAccessibleFloor(
+      userId,
       projectId,
       dto.floorId,
     );
@@ -60,9 +60,11 @@ export class IssuesService {
           dto.description,
         ),
         floorId: dto.floorId,
-        authorId: ownerId,
+        authorId: userId,
         ...(dto.priority !== undefined
-          ? { priority: dto.priority }
+          ? {
+              priority: dto.priority,
+            }
           : {}),
       },
       select: issueSelect,
@@ -70,14 +72,22 @@ export class IssuesService {
   }
 
   async findAll(
-    ownerId: string,
+    userId: string,
     projectId: string,
     query: IssueQueryDto,
   ): Promise<IssueListResponseDto> {
-    await this.projectsService.assertOwnedProject(
-      ownerId,
+    await this.projectsService.assertProjectAccess(
+      userId,
       projectId,
     );
+
+    if (query.floorId !== undefined) {
+      await this.locationsService.assertAccessibleFloor(
+        userId,
+        projectId,
+        query.floorId,
+      );
+    }
 
     const search = query.search?.trim();
 
@@ -85,19 +95,22 @@ export class IssuesService {
       floor: {
         building: {
           projectId,
-          project: {
-            ownerId,
-          },
         },
       },
       ...(query.status !== undefined
-        ? { status: query.status }
+        ? {
+            status: query.status,
+          }
         : {}),
       ...(query.priority !== undefined
-        ? { priority: query.priority }
+        ? {
+            priority: query.priority,
+          }
         : {}),
       ...(query.floorId !== undefined
-        ? { floorId: query.floorId }
+        ? {
+            floorId: query.floorId,
+          }
         : {}),
       ...(search
         ? {
@@ -146,44 +159,45 @@ export class IssuesService {
   }
 
   findOne(
-    ownerId: string,
+    userId: string,
     projectId: string,
     issueId: string,
   ): Promise<IssueResponseDto> {
-    return this.assertOwnedIssue(
-      ownerId,
+    return this.assertAccessibleIssue(
+      userId,
       projectId,
       issueId,
     );
   }
 
   async update(
-    ownerId: string,
+    userId: string,
     projectId: string,
     issueId: string,
     dto: UpdateIssueDto,
   ): Promise<IssueResponseDto> {
-    await this.assertOwnedIssue(
-      ownerId,
+    await this.projectsService.assertCanManageIssues(
+      userId,
+      projectId,
+    );
+
+    const issue = await this.getIssueInProject(
       projectId,
       issueId,
     );
 
     if (dto.floorId !== undefined) {
-      await this.locationsService.assertOwnedFloor(
-        ownerId,
+      await this.locationsService.assertAccessibleFloor(
+        userId,
         projectId,
         dto.floorId,
       );
     }
 
-    const resolvedAt =
-      dto.status === IssueStatus.RESOLVED ||
-      dto.status === IssueStatus.CLOSED
-        ? new Date()
-        : dto.status !== undefined
-          ? null
-          : undefined;
+    const resolvedAt = this.resolveCompletionDate(
+      issue.resolvedAt,
+      dto.status,
+    );
 
     return this.prisma.issue.update({
       where: {
@@ -191,7 +205,9 @@ export class IssuesService {
       },
       data: {
         ...(dto.title !== undefined
-          ? { title: dto.title.trim() }
+          ? {
+              title: dto.title.trim(),
+            }
           : {}),
         ...(dto.description !== undefined
           ? {
@@ -201,16 +217,24 @@ export class IssuesService {
             }
           : {}),
         ...(dto.priority !== undefined
-          ? { priority: dto.priority }
+          ? {
+              priority: dto.priority,
+            }
           : {}),
         ...(dto.status !== undefined
-          ? { status: dto.status }
+          ? {
+              status: dto.status,
+            }
           : {}),
         ...(dto.floorId !== undefined
-          ? { floorId: dto.floorId }
+          ? {
+              floorId: dto.floorId,
+            }
           : {}),
         ...(resolvedAt !== undefined
-          ? { resolvedAt }
+          ? {
+              resolvedAt,
+            }
           : {}),
       },
       select: issueSelect,
@@ -218,12 +242,16 @@ export class IssuesService {
   }
 
   async remove(
-    ownerId: string,
+    userId: string,
     projectId: string,
     issueId: string,
   ): Promise<void> {
-    await this.assertOwnedIssue(
-      ownerId,
+    await this.projectsService.assertCanManageIssues(
+      userId,
+      projectId,
+    );
+
+    await this.getIssueInProject(
       projectId,
       issueId,
     );
@@ -235,8 +263,23 @@ export class IssuesService {
     });
   }
 
-  async assertOwnedIssue(
-    ownerId: string,
+  async assertAccessibleIssue(
+    userId: string,
+    projectId: string,
+    issueId: string,
+  ): Promise<IssueResponseDto> {
+    await this.projectsService.assertProjectAccess(
+      userId,
+      projectId,
+    );
+
+    return this.getIssueInProject(
+      projectId,
+      issueId,
+    );
+  }
+
+  private async getIssueInProject(
     projectId: string,
     issueId: string,
   ): Promise<IssueResponseDto> {
@@ -246,9 +289,6 @@ export class IssuesService {
         floor: {
           building: {
             projectId,
-            project: {
-              ownerId,
-            },
           },
         },
       },
@@ -262,6 +302,24 @@ export class IssuesService {
     return issue;
   }
 
+  private resolveCompletionDate(
+    currentResolvedAt: Date | null,
+    status?: IssueStatus,
+  ): Date | null | undefined {
+    if (status === undefined) {
+      return undefined;
+    }
+
+    if (
+      status === IssueStatus.RESOLVED ||
+      status === IssueStatus.CLOSED
+    ) {
+      return currentResolvedAt ?? new Date();
+    }
+
+    return null;
+  }
+
   private normalizeDescription(
     description?: string,
   ): string | null | undefined {
@@ -271,6 +329,8 @@ export class IssuesService {
 
     const normalized = description.trim();
 
-    return normalized.length > 0 ? normalized : null;
+    return normalized.length > 0
+      ? normalized
+      : null;
   }
 }
