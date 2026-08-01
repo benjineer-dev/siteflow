@@ -150,7 +150,7 @@ export class IssuesService {
     projectId: string,
     issueId: string,
   ): Promise<IssueResponseDto> {
-    return this.getOwnedIssue(
+    return this.assertOwnedIssue(
       ownerId,
       projectId,
       issueId,
@@ -163,7 +163,7 @@ export class IssuesService {
     issueId: string,
     dto: UpdateIssueDto,
   ): Promise<IssueResponseDto> {
-    await this.getOwnedIssue(
+    await this.assertOwnedIssue(
       ownerId,
       projectId,
       issueId,
@@ -222,7 +222,7 @@ export class IssuesService {
     projectId: string,
     issueId: string,
   ): Promise<void> {
-    await this.getOwnedIssue(
+    await this.assertOwnedIssue(
       ownerId,
       projectId,
       issueId,
@@ -235,7 +235,7 @@ export class IssuesService {
     });
   }
 
-  private async getOwnedIssue(
+  async assertOwnedIssue(
     ownerId: string,
     projectId: string,
     issueId: string,

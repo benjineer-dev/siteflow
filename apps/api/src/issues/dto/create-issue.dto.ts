@@ -21,7 +21,7 @@ export class CreateIssueDto {
   @IsString()
   @MinLength(3)
   @MaxLength(200)
-  title: string;
+  title!: string;
 
   @ApiPropertyOptional({
     example: 'Cable requires additional fastening near the ceiling.',
@@ -44,5 +44,5 @@ export class CreateIssueDto {
     format: 'uuid',
   })
   @IsUUID()
-  floorId: string;
+  floorId!: string;
 }

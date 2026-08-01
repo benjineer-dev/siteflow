@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { apiReference } from '@scalar/nestjs-api-reference';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -39,6 +40,45 @@ async function bootstrap() {
 
   const swaggerDocument = () =>
     SwaggerModule.createDocument(app, swaggerConfig);
+  app.use(
+    '/docs',
+    apiReference({
+      content: swaggerDocument,
+
+      theme: 'deepSpace',
+      layout: 'modern',
+      darkMode: true,
+
+      showOperationId: true,
+      modelsSectionLabel: `DTO`,
+      defaultHttpClient: {
+        targetKey: 'js',
+        clientKey: 'fetch',
+      },
+
+      metaData: {
+        title: 'SiteFlow API Documentation',
+        description: 'SiteFlow Backend API Documentation',
+      },
+
+      customCss: `
+        .references-layout {
+          --scalar-radius: 10px;
+          --scalar-radius-lg: 14px;
+          --scalar-radius-xl: 18px;
+        }
+
+        .sidebar {
+          backdrop-filter: blur(16px);
+        }
+
+        .section-header {
+          letter-spacing: -0.02em;
+        }
+      `,
+    }),
+  );
+
 
   SwaggerModule.setup('docs', app, swaggerDocument);
 

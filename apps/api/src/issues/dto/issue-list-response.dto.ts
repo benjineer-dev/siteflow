@@ -3,16 +3,16 @@ import { IssueResponseDto } from './issue-response.dto';
 
 export class IssueListMetaDto {
   @ApiProperty()
-  page: number;
+  page!: number;
 
   @ApiProperty()
-  limit: number;
+  limit!: number;
 
   @ApiProperty()
-  total: number;
+  total!: number;
 
   @ApiProperty()
-  totalPages: number;
+  totalPages!: number;
 }
 
 export class IssueListResponseDto {
@@ -20,10 +20,10 @@ export class IssueListResponseDto {
     type: IssueResponseDto,
     isArray: true,
   })
-  items: IssueResponseDto[];
+  items!: IssueResponseDto[];
 
   @ApiProperty({
     type: IssueListMetaDto,
   })
-  meta: IssueListMetaDto;
+  meta!: IssueListMetaDto;
 }
