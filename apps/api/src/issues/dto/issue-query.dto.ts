@@ -67,4 +67,11 @@ export class IssueQueryDto {
   @IsString()
   @MaxLength(200)
   search?: string;
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Filter issues by assignee',
+  })
+  @IsOptional()
+  @IsUUID()
+  assigneeId?: string;
 }

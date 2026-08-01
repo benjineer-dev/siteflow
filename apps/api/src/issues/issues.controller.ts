@@ -28,6 +28,7 @@ import { IssueQueryDto } from './dto/issue-query.dto';
 import { IssueResponseDto } from './dto/issue-response.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { IssuesService } from './issues.service';
+import { AssignIssueDto } from './dto/assign-issue.dto';
 
 @ApiTags('issues')
 @ApiBearerAuth('access-token')
@@ -135,4 +136,27 @@ export class IssuesController {
       issueId,
     );
   }
+  @Patch(':issueId/assignee')
+@ApiOperation({
+  summary: 'Assign or unassign an issue',
+})
+@ApiOkResponse({
+  type: IssueResponseDto,
+})
+@ApiNotFoundResponse({
+  description: 'Issue or project member not found',
+})
+assign(
+  @CurrentUser() user: UserResponseDto,
+  @Param('projectId', ParseUUIDPipe) projectId: string,
+  @Param('issueId', ParseUUIDPipe) issueId: string,
+  @Body() dto: AssignIssueDto,
+): Promise<IssueResponseDto> {
+  return this.issuesService.assign(
+    user.id,
+    projectId,
+    issueId,
+    dto,
+  );
+}
 }

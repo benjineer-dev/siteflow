@@ -14,6 +14,8 @@ import { IssueListResponseDto } from './dto/issue-list-response.dto';
 import { IssueQueryDto } from './dto/issue-query.dto';
 import { IssueResponseDto } from './dto/issue-response.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
+import { MembersService } from 'src/members/members.service';
+import { AssignIssueDto } from './dto/assign-issue.dto';
 
 const issueSelect = {
   id: true,
@@ -32,10 +34,11 @@ const issueSelect = {
 @Injectable()
 export class IssuesService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly projectsService: ProjectsService,
-    private readonly locationsService: LocationsService,
-  ) {}
+  private readonly prisma: PrismaService,
+  private readonly projectsService: ProjectsService,
+  private readonly locationsService: LocationsService,
+  private readonly membersService: MembersService,
+) {}
 
   async create(
     userId: string,
@@ -91,47 +94,51 @@ export class IssuesService {
 
     const search = query.search?.trim();
 
-    const where: Prisma.IssueWhereInput = {
-      floor: {
-        building: {
-          projectId,
-        },
-      },
-      ...(query.status !== undefined
-        ? {
-            status: query.status,
-          }
-        : {}),
-      ...(query.priority !== undefined
-        ? {
-            priority: query.priority,
-          }
-        : {}),
-      ...(query.floorId !== undefined
-        ? {
-            floorId: query.floorId,
-          }
-        : {}),
-      ...(search
-        ? {
-            OR: [
-              {
-                title: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
-              },
-              {
-                description: {
-                  contains: search,
-                  mode: 'insensitive',
-                },
-              },
-            ],
-          }
-        : {}),
-    };
-
+   const where: Prisma.IssueWhereInput = {
+  floor: {
+    building: {
+      projectId,
+    },
+  },
+  ...(query.status !== undefined
+    ? {
+        status: query.status,
+      }
+    : {}),
+  ...(query.priority !== undefined
+    ? {
+        priority: query.priority,
+      }
+    : {}),
+  ...(query.floorId !== undefined
+    ? {
+        floorId: query.floorId,
+      }
+    : {}),
+  ...(query.assigneeId !== undefined
+    ? {
+        assigneeId: query.assigneeId,
+      }
+    : {}),
+  ...(search
+    ? {
+        OR: [
+          {
+            title: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+          {
+            description: {
+              contains: search,
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }
+    : {}),
+};
     const [total, items] = await this.prisma.$transaction([
       this.prisma.issue.count({
         where,
@@ -240,7 +247,39 @@ export class IssuesService {
       select: issueSelect,
     });
   }
+async assign(
+  userId: string,
+  projectId: string,
+  issueId: string,
+  dto: AssignIssueDto,
+): Promise<IssueResponseDto> {
+  await this.projectsService.assertCanManageIssues(
+    userId,
+    projectId,
+  );
 
+  await this.getIssueInProject(
+    projectId,
+    issueId,
+  );
+
+  if (dto.assigneeId !== null) {
+    await this.membersService.assertProjectMember(
+      projectId,
+      dto.assigneeId,
+    );
+  }
+
+  return this.prisma.issue.update({
+    where: {
+      id: issueId,
+    },
+    data: {
+      assigneeId: dto.assigneeId,
+    },
+    select: issueSelect,
+  });
+}
   async remove(
     userId: string,
     projectId: string,
