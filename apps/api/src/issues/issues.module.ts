@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { IssuesController } from './issues.controller';
 import { IssuesService } from './issues.service';
+import { FileStorageModule } from 'src/file-storage/file-storage.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { IssuesService } from './issues.service';
     ProjectsModule,
     LocationsModule,
     MembersModule,
+    FileStorageModule
   ],
   controllers: [IssuesController],
   providers: [IssuesService],

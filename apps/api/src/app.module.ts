@@ -10,6 +10,7 @@ import { LocationsModule } from './locations/locations.module';
 import { IssuesModule } from './issues/issues.module';
 import { CommentsModule } from './comments/comments.module';
 import { MembersModule } from './members/members.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MembersModule } from './members/members.module';
     IssuesModule,
     CommentsModule,
     MembersModule,
+    AttachmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

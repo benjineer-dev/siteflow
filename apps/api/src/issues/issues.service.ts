@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -16,6 +17,7 @@ import { IssueResponseDto } from './dto/issue-response.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { MembersService } from 'src/members/members.service';
 import { AssignIssueDto } from './dto/assign-issue.dto';
+import { LocalFileStorageService } from 'src/file-storage/local-file-storage.service';
 
 const issueSelect = {
   id: true,
@@ -37,9 +39,12 @@ export class IssuesService {
   private readonly prisma: PrismaService,
   private readonly projectsService: ProjectsService,
   private readonly locationsService: LocationsService,
-  private readonly membersService: MembersService,
+    private readonly membersService: MembersService,
+  private readonly fileStorage: LocalFileStorageService,
 ) {}
-
+private readonly logger = new Logger(
+  IssuesService.name,
+);
   async create(
     userId: string,
     projectId: string,
@@ -280,27 +285,55 @@ async assign(
     select: issueSelect,
   });
 }
-  async remove(
-    userId: string,
-    projectId: string,
-    issueId: string,
-  ): Promise<void> {
-    await this.projectsService.assertCanManageIssues(
-      userId,
-      projectId,
-    );
+ async remove(
+  userId: string,
+  projectId: string,
+  issueId: string,
+): Promise<void> {
+  await this.projectsService.assertCanManageIssues(
+    userId,
+    projectId,
+  );
 
-    await this.getIssueInProject(
-      projectId,
-      issueId,
-    );
+  await this.getIssueInProject(
+    projectId,
+    issueId,
+  );
 
-    await this.prisma.issue.delete({
+  const attachments =
+    await this.prisma.attachment.findMany({
       where: {
-        id: issueId,
+        issueId,
+      },
+      select: {
+        storedName: true,
       },
     });
+
+  await this.prisma.issue.delete({
+    where: {
+      id: issueId,
+    },
+  });
+
+  const results = await Promise.allSettled(
+    attachments.map((attachment) =>
+      this.fileStorage.remove(
+        attachment.storedName,
+      ),
+    ),
+  );
+
+  const failedCount = results.filter(
+    (result) => result.status === 'rejected',
+  ).length;
+
+  if (failedCount > 0) {
+    this.logger.warn(
+      `Failed to remove ${failedCount} attachment files for issue ${issueId}`,
+    );
   }
+}
 
   async assertAccessibleIssue(
     userId: string,

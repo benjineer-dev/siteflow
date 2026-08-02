@@ -38,7 +38,7 @@ model User {
   name         String
   passwordHash String
   role         UserRole @default(ENGINEER)
-
+  uploadedAttachments Attachment[]
   projects Project[]
   projectMemberships ProjectMember[]
   issueComments IssueComment[]
@@ -130,7 +130,7 @@ model Issue {
 
   assigneeId String?
   assignee   User? @relation("IssueAssignee",fields: [assigneeId],references: [id],onDelete: SetNull)
-
+  attachments Attachment[]
   resolvedAt DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -155,4 +155,22 @@ model IssueComment {
 
   @@index([issueId, createdAt])
   @@index([authorId])
+}
+model Attachment {
+  id           String @id @default(uuid())
+  originalName String
+  storedName   String @unique
+  mimeType     String
+  size         Int
+
+  issueId String
+  issue   Issue @relation(fields: [issueId],references: [id],onDelete: Cascade)
+
+  uploaderId String
+  uploader   User @relation(fields: [uploaderId],references: [id],onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([issueId, createdAt])
+  @@index([uploaderId])
 }
