@@ -1,5 +1,8 @@
 'use client';
-
+import {
+  IssueBoard,
+  type FloorOption,
+} from '@/components/projects/issue-board';
 import Link from 'next/link';
 import {
   useParams,
@@ -22,6 +25,8 @@ import {
   type CreateFloorRequest,
   type Floor,
   type Project,
+  type ProjectMember,
+  type ProjectRole,
 } from '@/lib/project-types';
 
 interface BuildingWithFloors extends Building {
@@ -47,7 +52,9 @@ export default function ProjectPage() {
 
   const [project, setProject] =
     useState<Project | null>(null);
-
+const [members, setMembers] = useState<
+  ProjectMember[]
+>([]);
   const [buildings, setBuildings] = useState<
     BuildingWithFloors[]
   >([]);
@@ -110,24 +117,32 @@ export default function ProjectPage() {
 
       try {
         const [
-          projectResponse,
-          buildingResponse,
-        ] = await Promise.all([
-          apiRequest<Project>(
-            `/projects/${projectId}`,
-            {
-              token,
-            },
-          ),
-          apiRequest<Building[]>(
-            `/projects/${projectId}/buildings`,
-            {
-              token,
-            },
-          ),
-        ]);
+  projectResponse,
+  buildingResponse,
+  memberResponse,
+] = await Promise.all([
+  apiRequest<Project>(
+    `/projects/${projectId}`,
+    {
+      token,
+    },
+  ),
+  apiRequest<Building[]>(
+    `/projects/${projectId}/buildings`,
+    {
+      token,
+    },
+  ),
+  apiRequest<ProjectMember[]>(
+    `/projects/${projectId}/members`,
+    {
+      token,
+    },
+  ),
+]);
 
-        setProject(projectResponse);
+          setProject(projectResponse);
+          setMembers(memberResponse);
 
         const buildingsWithLoadingState =
           buildingResponse.map(
@@ -375,8 +390,44 @@ export default function ProjectPage() {
     );
   }
 
-  const isOwner =
-    project.ownerId === user.id;
+    const isOwner = project.ownerId === user.id;
+    const membership = members.find(
+  (member) => member.userId === user.id,
+);
+
+const accessRole: ProjectRole = isOwner
+  ? 'OWNER'
+  : membership?.role ?? 'CONTRACTOR';
+
+const canManageIssues =
+  accessRole === 'OWNER' ||
+  accessRole === 'ENGINEER';
+
+const floorOptions: FloorOption[] =
+  buildings
+    .flatMap((building) =>
+      building.floors.map((floor) => ({
+        id: floor.id,
+        level: floor.level,
+        name: floor.name,
+        buildingName: building.name,
+      })),
+    )
+    .sort((firstFloor, secondFloor) => {
+      const buildingComparison =
+        firstFloor.buildingName.localeCompare(
+          secondFloor.buildingName,
+        );
+
+      if (buildingComparison !== 0) {
+        return buildingComparison;
+      }
+
+      return (
+        firstFloor.level -
+        secondFloor.level
+      );
+    });
 
   return (
     <main className="dashboard">
@@ -533,7 +584,13 @@ export default function ProjectPage() {
               />
             ))}
           </div>
-        )}
+              )}
+              <IssueBoard
+  projectId={projectId}
+  token={token}
+  floors={floorOptions}
+  canManage={canManageIssues}
+/>
       </section>
     </main>
   );
