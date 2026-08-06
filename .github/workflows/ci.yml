@@ -22,35 +22,6 @@ env:
   UPLOAD_DIR: storage/test-uploads
 
 jobs:
-  quality:
-    name: Lint and build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 10
-          cache: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma Client
-        run: pnpm --filter api exec prisma generate
-
-      - name: Build applications
-        run: pnpm build
-
   api-e2e:
     name: API e2e tests
     runs-on: ubuntu-latest

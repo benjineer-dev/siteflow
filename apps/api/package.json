@@ -12,8 +12,8 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "test:e2e:db:up": "docker compose -f ../../compose.test.yaml up -d --wait",
-    "test:e2e:db:down": "docker compose -f ../../compose.test.yaml down -v",
+    "test:e2e:db:up": "docker compose -p siteflow-test -f ../../compose.test.yaml up -d --wait",
+    "test:e2e:db:down": "docker compose -p siteflow-test -f ../../compose.test.yaml down -v",
     "test:e2e:migrate": "dotenv -e .env.test -- prisma migrate deploy",
     "test:e2e:run": "dotenv -e .env.test -- vitest run --config ./vitest.e2e.config.ts",
     "test:e2e": "pnpm test:e2e:db:up && pnpm test:e2e:migrate && pnpm test:e2e:run"
