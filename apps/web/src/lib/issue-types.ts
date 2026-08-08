@@ -37,3 +37,19 @@ export interface CreateIssueRequest {
   priority?: IssuePriority;
   floorId: string;
 }
+export interface IssueComment {
+  id: string;
+  content: string;
+  issueId: string;
+  authorId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateIssueCommentRequest {
+  content: string;
+}
+
+export interface AssignIssueRequest {
+  assigneeId: string | null;
+}

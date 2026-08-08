@@ -19,6 +19,7 @@ import {
   type IssuePriority,
   type IssueStatus,
 } from '@/lib/issue-types';
+import Link from 'next/link';
 
 const ISSUES_PER_PAGE = 10;
 
@@ -342,8 +343,9 @@ export function IssueBoard({
             {issues.map((issue) => (
               <IssueCard
                 key={issue.id}
-                issue={issue}
-                floors={floors}
+  projectId={projectId}
+  issue={issue}
+  floors={floors}
               />
             ))}
           </div>
@@ -408,11 +410,13 @@ export function IssueBoard({
 }
 
 interface IssueCardProps {
+  projectId: string;
   issue: Issue;
   floors: FloorOption[];
 }
 
 function IssueCard({
+  projectId,
   issue,
   floors,
 }: IssueCardProps) {
@@ -430,7 +434,10 @@ function IssueCard({
   ).format(new Date(issue.createdAt));
 
   return (
-    <article className="issue-card">
+  <Link
+    className="issue-card"
+    href={`/projects/${projectId}/issues/${issue.id}`}
+  >
       <div className="issue-card-main">
         <div className="issue-card-badges">
           <span
@@ -480,7 +487,7 @@ function IssueCard({
           <strong>{createdAt}</strong>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
