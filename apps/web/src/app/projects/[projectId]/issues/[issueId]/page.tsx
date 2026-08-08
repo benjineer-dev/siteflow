@@ -28,6 +28,7 @@ import {
   type ProjectMember,
   type ProjectRole,
 } from '@/lib/project-types';
+import { AttachmentSection } from '@/components/issues/attachment-section';
 
 export default function IssuePage() {
   const router = useRouter();
@@ -705,7 +706,15 @@ export default function IssuePage() {
             )}
           </aside>
         </div>
-
+<AttachmentSection
+  projectId={projectId}
+  issueId={issueId}
+  token={token}
+  currentUserId={user.id}
+  isProjectOwner={
+    project.ownerId === user.id
+  }
+/>
         <section className="comments-section">
           <div className="workspace-section-heading">
             <div>

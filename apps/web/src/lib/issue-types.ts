@@ -53,3 +53,12 @@ export interface CreateIssueCommentRequest {
 export interface AssignIssueRequest {
   assigneeId: string | null;
 }
+export interface Attachment {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  issueId: string;
+  uploaderId: string;
+  createdAt: string;
+}

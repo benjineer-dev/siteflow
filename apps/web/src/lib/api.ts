@@ -104,3 +104,36 @@ function getErrorMessage(
     'An unexpected error occurred'
   );
 }
+export async function apiDownload(
+  path: string,
+  token: string,
+): Promise<Blob> {
+  const response = await fetch(
+    `${API_URL}${path}`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    },
+  );
+
+  if (!response.ok) {
+    const contentType =
+      response.headers.get('content-type');
+
+    const responseBody = contentType?.includes(
+      'application/json',
+    )
+      ? ((await response.json()) as ApiErrorResponse)
+      : await response.text();
+
+    throw new ApiError(
+      getErrorMessage(responseBody),
+      response.status,
+    );
+  }
+
+  return response.blob();
+}
